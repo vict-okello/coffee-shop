@@ -3,8 +3,12 @@ import elzacoffee from '../assets/elzacoffee.png'
 import Cup1 from '../assets/cup1.png'
 import coffeebanner from '../assets/coffeebanner.png'
 import beans from '../assets/beans.png'
+import { useNavigate } from "react-router-dom";
 
 function Banner() {
+
+  const navigate = useNavigate();
+
   return (
     <div>
       <section className="w-full min-h-screen bg-[#1D1212] flex flex-col md:flex-row items-center justify-between px-6 md:px-12 py-12">
@@ -24,12 +28,14 @@ function Banner() {
         {/* BUTTONS */}
         <div className="flex gap-4 flex-wrap">
           <button
+            onClick={() => navigate("/product")}
             className="px-6 py-3 rounded-full border-2 border-[#D6C1A7]
             text-[#D6C1A7] hover:bg-[#D6C1A7] hover:text-[#4A2F23] transition">
             Shop Now
           </button>
 
           <button
+            onClick={() => navigate("/menu")}
             className="px-6 py-3 rounded-full border-2 border-[#D6C1A7]
             text-[#D6C1A7] hover:bg-[#D6C1A7] hover:text-[#4A2F23] transition">
             Catalog

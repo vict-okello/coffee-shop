@@ -1,9 +1,14 @@
 import React from 'react'
 import offerbag from '../assets/offerbag.png'
+import { useNavigate } from "react-router-dom";
 
 function Offer() {
-  return (
-    <section className="bg-[#1D1212] flex flex-col px-4 py-16 items-center">
+
+  const navigate = useNavigate();
+
+  return ( 
+
+<section className="bg-[#1D1212] flex flex-col px-4 py-16 items-center">
       {/* Card */}
       <div
         className="
@@ -33,6 +38,7 @@ function Offer() {
           </p>
 
           <button
+            onClick={()=> navigate("/product")}
             className="px-6 py-3 rounded-full border-2 border-[#D6C1A7]
             text-[#D6C1A7] hover:bg-[#D6C1A7] hover:text-[#4A2F23] transition font-medium"
           >

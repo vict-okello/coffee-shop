@@ -13,9 +13,7 @@ function Navbar() {
   const links = [
     { name: "Home", to: "/" },
     { name: "Menu", to: "/menu" },
-    { name: "Service", to: "/service" },
     { name: "Product", to: "/product" },
-    { name: "Blog", to: "/blog" },
     { name: "Contact", to: "/contact" },
   ];
 

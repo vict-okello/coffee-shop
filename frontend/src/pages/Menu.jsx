@@ -81,7 +81,7 @@ const Menu = () => {
   };
 
   return (
-    <div className="max-w-4xl mx-auto p-4 ">
+    <div className=" max-w-4xl mx-auto p-4 ">
       {menuItems.slice(0, visibleCount).map((item) => (
         <div
           key={item.id}
