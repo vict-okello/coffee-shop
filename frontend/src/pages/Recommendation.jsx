@@ -2,7 +2,7 @@ import { ShoppingCart, ChevronLeft, ChevronRight, Info } from "lucide-react";
 import coffeeblue from "../assets/coffeeblue.png";
 import coffeegreen from "../assets/coffeegreen.png";
 import coffeebrown from "../assets/coffeebrown.png";
-import { useCart } from "../Context/CardContext";
+import { useCart } from "../Context/CartContext";
 
 const products = [
   {
@@ -56,7 +56,7 @@ export default function Recommended() {
 
               {/* Cart icon (FUNCTIONAL) */}
               <button
-                onClick={addToCart}
+                onClick={() => addToCart(product)}
                 className="absolute bottom-6 right-6 text-[#e6d3bd] hover:scale-110 transition"
               >
                 <ShoppingCart className="w-6 h-6" />
