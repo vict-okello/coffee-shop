@@ -1,4 +1,5 @@
 import React from 'react';
+import { motion } from 'framer-motion';
 import icon1 from '../assets/icon1.png';
 import icon2 from '../assets/icon2.png';
 import icon3 from '../assets/icon3.png';
@@ -14,22 +15,44 @@ function HomeService() {
     { title: "Pastry", icon: icon5 },
   ];
 
+  // Framer motion variants
+  const container = {
+    hidden: {},
+    visible: {
+      transition: {
+        staggerChildren: 0.2, // stagger cards
+      },
+    },
+  };
+
+  const cardVariant = {
+    hidden: { opacity: 0, x: 100 }, // start off to the right
+    visible: { opacity: 1, x: 0, transition: { type: 'spring', stiffness: 100, damping: 20 } },
+  };
+
   return (
-    <section className="bg-[#1D1212] py-24 px-4 flex flex-col items-center">
+    <motion.section
+      className="bg-[#1D1212] py-24 px-4 flex flex-col items-center"
+      variants={container}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.3 }}
+    >
       <h1 className="text-4xl text-white md:text-5xl font-serif mb-12">Service</h1>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-6 md:gap-10">
         {services.map((service, index) => (
-          <div
+          <motion.div
             key={index}
-            className="bg-[#54372A] rounded-2xl flex flex-col items-center justify-center p-6 md:p-8 transition-transform hover:scale-105"
+            className="bg-[#54372A] rounded-2xl flex flex-col items-center justify-center p-6 md:p-8 cursor-pointer hover:scale-105 transition-transform"
+            variants={cardVariant}
           >
             <img src={service.icon} className="w-12 md:w-16 mb-4" alt={service.title} />
             <p className="text-[#f8e3c1] text-sm md:text-base text-center">{service.title}</p>
-          </div>
+          </motion.div>
         ))}
       </div>
-    </section>
+    </motion.section>
   );
 }
 

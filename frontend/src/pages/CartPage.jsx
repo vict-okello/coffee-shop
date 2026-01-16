@@ -7,6 +7,8 @@ export default function CartPage() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.qty, 0);
 
+  const formatPrice = (price) => `$${price.toLocaleString()}`;
+
   return (
     <div className="p-8 max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold mb-6">Your Cart</h1>
@@ -19,7 +21,7 @@ export default function CartPage() {
         <div key={item.id} className="flex justify-between border-b py-4 items-center">
           <div>
             <p className="font-semibold">{item.name}</p>
-            <p className="text-sm text-gray-600">Rs {item.price} each</p>
+            <p className="text-sm text-gray-600">{formatPrice(item.price)} each</p>
           </div>
           <div className="flex items-center gap-2">
             <button
@@ -43,19 +45,20 @@ export default function CartPage() {
             </button>
           </div>
           <div>
-            <span className="font-semibold">Rs {item.price * item.qty}</span>
+            <span className="font-semibold">{formatPrice(item.price * item.qty)}</span>
           </div>
         </div>
       ))}
 
       {cart.length > 0 && (
         <>
-          <div className="text-right mt-6 font-bold text-lg">Total: Rs {total}</div>
+          <div className="text-right mt-6 font-bold text-lg">
+            Total: {formatPrice(total)}
+          </div>
 
-          {/* Checkout Button */}
           <div className="mt-6 flex justify-end">
             <button
-              onClick={() => navigate("/checkout")} 
+              onClick={() => navigate("/payment")}
               className="bg-[#C18A55] text-white px-5 py-2 rounded hover:opacity-90"
             >
               Checkout

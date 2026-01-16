@@ -4,7 +4,9 @@ import product2 from "../assets/product2.png";
 import { useCart } from "../Context/CartContext"; 
 
 export default function Product() {
-  const { addToCart } = useCart(); //
+  const { addToCart } = useCart();
+
+  const formatPrice = (price) => `$${price.toLocaleString()}`;
 
   return (
     <div className="bg-gray-50 font-[cursive] min-h-screen">
@@ -12,7 +14,7 @@ export default function Product() {
       {/* Top Product */}
       <section className="flex flex-col md:flex-row items-center justify-center p-10 gap-10">
         <div className="text-center">
-          <p className="text-sm mb-3">Rs 850 (500 gm)</p>
+          <p className="text-sm mb-3">{formatPrice(850)} (500 gm)</p>
           <div className="rounded-xl p-5 mx-auto w-60">
             <img src={product1} alt="Coffee Bag" className="w-full" />
           </div>
@@ -20,8 +22,8 @@ export default function Product() {
 
         <div className="max-w-md">
           <p className="mb-4 leading-relaxed">
-            The coffee beans inside the package is half roasted and flavour
-            are compact within the beans. It’s a 500 gm package full of happiness.
+            The coffee beans inside the package are half roasted and the flavour
+            is compact within the beans. It’s a 500 gm package full of happiness.
           </p>
           <button
             onClick={() =>
@@ -42,7 +44,7 @@ export default function Product() {
       {/* Bottom Product */}
       <section className="flex flex-col md:flex-row items-center justify-center p-10 gap-10">
         <div className="text-center">
-          <p className="text-sm mb-3">Rs 1500 (1 kg)</p>
+          <p className="text-sm mb-3">{formatPrice(1500)} (1 kg)</p>
           <div className="bg-white rounded-xl p-5 mx-auto w-60">
             <img src={product2} alt="Coffee Bags" className="w-full" />
           </div>
