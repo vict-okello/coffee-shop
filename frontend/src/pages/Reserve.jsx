@@ -1,48 +1,122 @@
-import React from 'react';
-import { motion } from 'framer-motion';
+import React, { useMemo, useState } from "react";
+import { motion } from "framer-motion";
 import ReserveImg from "../assets/ReserveImg.png";
 
 function Reserve() {
-  // Variants for image sliding in from left
+  // --- animations (same idea as yours) ---
   const imageVariant = {
     hidden: { opacity: 0, x: -100 },
-    visible: { opacity: 1, x: 0, transition: { duration: 1, ease: 'easeOut' } },
+    visible: { opacity: 1, x: 0, transition: { duration: 1, ease: "easeOut" } },
   };
 
-  // Variants for form sliding in from right
   const formVariant = {
     hidden: { opacity: 0, x: 100 },
-    visible: { 
-      opacity: 1, 
-      x: 0, 
-      transition: { duration: 1, ease: 'easeOut', delay: 0.3 } 
+    visible: {
+      opacity: 1,
+      x: 0,
+      transition: { duration: 1, ease: "easeOut", delay: 0.3 },
     },
   };
 
-  // Variant for each input/button inside the form
   const inputVariant = {
     hidden: { opacity: 0, y: 20 },
-    visible: i => ({
+    visible: (i) => ({
       opacity: 1,
       y: 0,
-      transition: { delay: i * 0.1 + 0.5, duration: 0.5, ease: 'easeOut' }
+      transition: { delay: i * 0.1 + 0.5, duration: 0.5, ease: "easeOut" },
     }),
   };
 
+  // --- form state ---
+  const [form, setForm] = useState({
+    date: "",
+    time: "",
+    guests: "",
+    name: "",
+    phone: "",
+    email: "",
+  });
+
+  const [status, setStatus] = useState({ type: "idle", message: "" }); // idle | error | success
+  const [submitting, setSubmitting] = useState(false);
+
+  const update = (key) => (e) => {
+    setForm((prev) => ({ ...prev, [key]: e.target.value }));
+    if (status.type !== "idle") setStatus({ type: "idle", message: "" });
+  };
+
+  const todayISO = useMemo(() => new Date().toISOString().slice(0, 10), []);
+
+  const validate = () => {
+    if (!form.date) return "Please select a date.";
+    if (form.date < todayISO) return "Date cannot be in the past.";
+    if (!form.time) return "Please select a time.";
+    if (!form.guests) return "Please select number of guests.";
+    if (!form.name.trim()) return "Please enter your name.";
+
+    const phoneClean = form.phone.replace(/\s+/g, "");
+    if (!phoneClean) return "Please enter your phone number.";
+    if (phoneClean.length < 8) return "Phone number looks too short.";
+
+    if (!form.email.trim()) return "Please enter your email.";
+    if (!form.email.includes("@") || !form.email.includes("."))
+      return "Please enter a valid email.";
+
+    return "";
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    const err = validate();
+    if (err) {
+      setStatus({ type: "error", message: err });
+      return;
+    }
+
+    setSubmitting(true);
+    setStatus({ type: "idle", message: "" });
+
+    try {
+      //   BACKEND LATER
+
+      await new Promise((r) => setTimeout(r, 700)); // demo delay
+
+      setStatus({
+        type: "success",
+        message: `Reservation received! We’ll contact you shortly to confirm.`,
+      });
+
+      setForm({
+        date: "",
+        time: "",
+        guests: "",
+        name: "",
+        phone: "",
+        email: "",
+      });
+    } catch (error) {
+      setStatus({
+        type: "error",
+        message: "Something went wrong. Please try again.",
+      });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   return (
-    <section className='bg-[#7D5647] flex flex-col py-16 px-4 items-center'>
+    <section className="bg-[#7D5647] flex flex-col py-16 px-4 items-center">
       <motion.h1
-        className='mb-12 text-5xl font-bold text-white leading-8 font-serif'
+        className="mb-12 text-5xl font-bold text-white leading-8 font-serif"
         initial={{ opacity: 0, y: -30 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1 }}
       >
         Reserve a Table
       </motion.h1>
-       
-      {/* wrapper */}
-      <div className="max-w-6xl w-full flex flex-col md:flex-row items-center justify-between gap-10 px-6">
 
+      <div className="max-w-6xl w-full flex flex-col md:flex-row items-center justify-between gap-10 px-6">
         {/* image */}
         <motion.div
           className="flex justify-center md:justify-start w-full md:w-1/2"
@@ -51,28 +125,44 @@ function Reserve() {
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
         >
-          <img 
+          <img
             className="object-contain w-[300px] sm:w-[330px] md:w-[400px]"
             src={ReserveImg}
-            alt="ReserveImg"
+            alt="Reserve"
           />
         </motion.div>
 
         {/* form */}
         <motion.form
+          onSubmit={handleSubmit}
           className="bg-transparent flex flex-col gap-4 w-full md:w-1/2"
           variants={formVariant}
           initial="hidden"
           whileInView="visible"
           viewport={{ once: true, amount: 0.3 }}
         >
+          {/* feedback */}
+          {status.type !== "idle" && (
+            <div
+              className={`rounded-md px-4 py-3 text-sm ${
+                status.type === "error"
+                  ? "bg-red-100 text-red-800"
+                  : "bg-green-100 text-green-800"
+              }`}
+            >
+              {status.message}
+            </div>
+          )}
+
           {/* Date */}
           <motion.input
             custom={0}
             variants={inputVariant}
             type="date"
-            className="w-full p-3 rounded-md bg-[#fff] text-black placeholder:text-gray-400 outline-none"
-            placeholder="Date"
+            min={todayISO}
+            value={form.date}
+            onChange={update("date")}
+            className="w-full p-3 rounded-md bg-white text-black placeholder:text-gray-400 outline-none"
           />
 
           {/* Time + Guest */}
@@ -81,20 +171,23 @@ function Reserve() {
               custom={1}
               variants={inputVariant}
               type="time"
+              value={form.time}
+              onChange={update("time")}
               className="w-1/2 p-3 rounded-md bg-white text-black outline-none"
-              placeholder="Time"
             />
             <motion.select
               custom={2}
               variants={inputVariant}
+              value={form.guests}
+              onChange={update("guests")}
               className="w-1/2 p-3 rounded-md bg-white text-black outline-none"
             >
-              <option>Guest</option>
-              <option>1</option>
-              <option>2</option>
-              <option>3</option>
-              <option>4</option>
-              <option>5+</option>
+              <option value="">Guest</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5+">5+</option>
             </motion.select>
           </div>
 
@@ -104,6 +197,8 @@ function Reserve() {
             variants={inputVariant}
             type="text"
             placeholder="your name"
+            value={form.name}
+            onChange={update("name")}
             className="w-full p-3 rounded-md bg-white text-black outline-none"
           />
 
@@ -113,6 +208,8 @@ function Reserve() {
             variants={inputVariant}
             type="tel"
             placeholder="your phone"
+            value={form.phone}
+            onChange={update("phone")}
             className="w-full p-3 rounded-md bg-white text-black outline-none"
           />
 
@@ -123,18 +220,27 @@ function Reserve() {
               variants={inputVariant}
               type="email"
               placeholder="your email"
+              value={form.email}
+              onChange={update("email")}
               className="w-3/4 p-3 rounded-md bg-white text-black outline-none"
             />
+
             <motion.button
               custom={6}
               variants={inputVariant}
-              className="w-1/4 bg-transparent border border-[#D6C1A7] text-[#D6C1A7] rounded-full hover:bg-[#D6C1A7] hover:text-[#4b2f23] transition font-medium"
+              type="submit"
+              disabled={submitting}
+              className={`w-1/4 border border-[#D6C1A7] rounded-full transition font-medium
+                ${
+                  submitting
+                    ? "bg-[#D6C1A7] text-[#4b2f23] opacity-70 cursor-not-allowed"
+                    : "bg-transparent text-[#D6C1A7] hover:bg-[#D6C1A7] hover:text-[#4b2f23]"
+                }`}
             >
-              Reserve
+              {submitting ? "..." : "Reserve"}
             </motion.button>
           </div>
         </motion.form>
-
       </div>
     </section>
   );

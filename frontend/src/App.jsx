@@ -9,6 +9,8 @@ import CartPage from "./pages/CartPage";
 import Payment from "./pages/Payment";
 import { CartProvider } from "./Context/CartContext";
 import Navbar from "./components/Navbar";
+import Auth from "./pages/Auth";
+import Review from "./pages/Review";
 
 function App() {
   return (
@@ -23,6 +25,8 @@ function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/cart" element={<CartPage />} />
           <Route path="/payment" element={<Payment />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/review" element={<Review/>} />
         </Routes>
       </BrowserRouter>
     </CartProvider>

@@ -5,6 +5,9 @@ import Home from '../pages/Home'
 import Menu from '../pages/Menu'
 import Product from '../pages/Product'
 import Contact from '../pages/Contact'
+import Auth from '../pages/Auth'
+import Payment from '../pages/Payment'
+import Review from '../pages/Review'
 
 const router = createBrowserRouter([
   {
@@ -26,6 +29,18 @@ const router = createBrowserRouter([
       {
         path: "/contact",
         element: <Contact/>
+      },
+      {
+        path: "/auth",
+        element: <Auth />
+      },
+      {
+        path: "/payment",
+        element: <Payment />
+      },
+      {
+        path: "/review",
+        element: <Review />
       },
     ]
   },
