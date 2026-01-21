@@ -5,6 +5,7 @@ import HomeService from './HomeService'
 import Offer from './Offer'
 import Reserve from './Reserve'
 import Recommendation from './Recommendation'
+import ChatbotWidget from '../components/ChatbotWidget'
 
 
 
@@ -17,6 +18,7 @@ function Home() {
     <Offer />
     <Reserve />
     <Recommendation />
+    <ChatbotWidget />
     </>
   )
 }
