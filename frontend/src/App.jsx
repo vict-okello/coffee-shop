@@ -11,6 +11,9 @@ import { CartProvider } from "./Context/CartContext";
 import Navbar from "./components/Navbar";
 import Auth from "./pages/Auth";
 import Review from "./pages/Review";
+import Admin from "./pages/Admin";
+import AdminLogin from "./pages/AdminLogin";
+import AdminProtected from "./components/AdminProtected"; 
 
 function App() {
   return (
@@ -26,7 +29,20 @@ function App() {
           <Route path="/cart" element={<CartPage />} />
           <Route path="/payment" element={<Payment />} />
           <Route path="/auth" element={<Auth />} />
-          <Route path="/review" element={<Review/>} />
+          <Route path="/review" element={<Review />} />
+
+          {/* Public */}
+          <Route path="/admin-login" element={<AdminLogin />} />
+
+          {/* Protected */}
+          <Route
+            path="/admin"
+            element={
+              <AdminProtected>
+                <Admin />
+              </AdminProtected>
+            }
+          />
         </Routes>
       </BrowserRouter>
     </CartProvider>

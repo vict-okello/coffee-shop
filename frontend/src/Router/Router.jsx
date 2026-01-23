@@ -8,6 +8,8 @@ import Contact from '../pages/Contact'
 import Auth from '../pages/Auth'
 import Payment from '../pages/Payment'
 import Review from '../pages/Review'
+import Admin from '../pages/Admin'
+import AdminLogin from '../pages/AdminLogin'
 
 const router = createBrowserRouter([
   {
@@ -41,6 +43,14 @@ const router = createBrowserRouter([
       {
         path: "/review",
         element: <Review />
+      },
+       {
+        path: "/admin",
+        element: <Admin />
+      },
+      {
+        path: "/admin-login",
+        element: <AdminLogin />
       },
     ]
   },
