@@ -17,6 +17,7 @@ export default function Auth() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const Eye = ({ open }) => (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" className="opacity-70">
@@ -59,7 +60,7 @@ export default function Auth() {
     </svg>
   );
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
 
@@ -68,12 +69,46 @@ export default function Auth() {
       return;
     }
 
-    // (connect backend later)
-    console.log(isLogin ? "LOGIN" : "SIGNUP", {
-      fullName,
-      emailOrPhone,
-      password,
-    });
+    try {
+      setLoading(true);
+
+      // For now: treat "emailOrPhone" as email
+      const email = emailOrPhone.trim().toLowerCase();
+
+      const url = isLogin ? "/api/auth/login" : "/api/auth/register";
+
+      const payload = isLogin
+        ? { email, password }
+        : { fullName: fullName.trim(), email, password };
+
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        setError(data?.message || "Something went wrong.");
+        return;
+      }
+
+      // store token + user
+      localStorage.setItem("token", data.token);
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // optional: clear fields
+      setPassword("");
+      setConfirmPassword("");
+
+      // go home (or dashboard)
+      window.location.href = "/";
+    } catch (err) {
+      setError("Network error. Is your backend running?");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const panel = {
@@ -214,7 +249,7 @@ export default function Auth() {
                   <input
                     value={emailOrPhone}
                     onChange={(e) => setEmailOrPhone(e.target.value)}
-                    placeholder="Email or phone"
+                    placeholder="Email"
                     className="mt-2 w-full rounded-xl bg-gray-100 px-4 py-3 outline-none border border-transparent focus:bg-white"
                     required
                   />
@@ -264,7 +299,6 @@ export default function Auth() {
                   )}
                 </AnimatePresence>
 
-                {/* Forgot link (only on login) */}
                 {isLogin && (
                   <div className="text-right">
                     <button
@@ -282,10 +316,11 @@ export default function Auth() {
                   whileHover={{ scale: 1.01 }}
                   whileTap={{ scale: 0.99 }}
                   type="submit"
-                  className="w-full py-3 rounded-xl text-white font-semibold transition hover:opacity-90"
+                  disabled={loading}
+                  className="w-full py-3 rounded-xl text-white font-semibold transition hover:opacity-90 disabled:opacity-60"
                   style={{ backgroundColor: BRAND }}
                 >
-                  {isLogin ? "Login" : "Create account"}
+                  {loading ? "Please wait..." : isLogin ? "Login" : "Create account"}
                 </motion.button>
 
                 <p className="text-sm text-gray-600 text-center mt-3">
@@ -307,7 +342,6 @@ export default function Auth() {
               </form>
             </div>
 
-            {/* small footer */}
             <div className="text-center text-xs text-gray-500 mt-6">
               © {new Date().getFullYear()} Elzacoffee — brewed with love.
             </div>
@@ -315,7 +349,6 @@ export default function Auth() {
         </motion.div>
       </div>
 
-      {/* Brand focus ring */}
       <style>{`
         input:focus {
           border-color: ${BRAND} !important;

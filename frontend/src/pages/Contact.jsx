@@ -6,13 +6,57 @@ const BRAND = "#7C573C";
 
 export default function Contact() {
   const [sent, setSent] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e) => {
+  const [error, setError] = useState("");
+  const [form, setForm] = useState({
+    name: "",
+    email: "",
+    subject: "",
+    message: "",
+  });
+
+  const onChange = (e) => {
+    const { name, value } = e.target;
+    setForm((p) => ({ ...p, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    setSent(true);
+    setError("");
+    setSent(false);
 
-    // connect to backend / email service
-    setTimeout(() => setSent(false), 4000);
+    // quick frontend validation
+    if (!form.name.trim() || !form.email.trim() || !form.message.trim()) {
+      setError("Please fill in your name, email, and message.");
+      return;
+    }
+
+    try {
+      setLoading(true);
+
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data?.message || "Failed to send message. Try again.");
+        return;
+      }
+
+      setSent(true);
+      setForm({ name: "", email: "", subject: "", message: "" });
+
+      setTimeout(() => setSent(false), 4000);
+    } catch (err) {
+      setError("Network error. Check your backend is running.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const cardVariant = {
@@ -34,11 +78,9 @@ export default function Contact() {
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          <h1 className="text-5xl font-semibold font-[cursive]">
-            Contact Us
-          </h1>
+          <h1 className="text-5xl font-semibold font-[cursive]">Contact Us</h1>
           <p className="mt-4 text-[#e6d3bd]/80 max-w-2xl mx-auto leading-relaxed">
-            Have a question, reservation request, or just want to say hello?  
+            Have a question, reservation request, or just want to say hello?
             We’d love to hear from you — our team is always happy to help.
           </p>
         </motion.div>
@@ -127,12 +169,18 @@ export default function Contact() {
           >
             <div className="grid md:grid-cols-2 gap-6">
               <input
+                name="name"
+                value={form.name}
+                onChange={onChange}
                 type="text"
                 placeholder="Your Name"
                 required
                 className="bg-transparent border-b border-white/20 focus:border-[#7C573C] outline-none py-3 placeholder:text-[#e6d3bd]/60"
               />
               <input
+                name="email"
+                value={form.email}
+                onChange={onChange}
                 type="email"
                 placeholder="Your Email"
                 required
@@ -141,27 +189,44 @@ export default function Contact() {
             </div>
 
             <input
+              name="subject"
+              value={form.subject}
+              onChange={onChange}
               type="text"
               placeholder="Subject"
               className="w-full bg-transparent border-b border-white/20 focus:border-[#7C573C] outline-none py-3 placeholder:text-[#e6d3bd]/60"
             />
 
             <textarea
+              name="message"
+              value={form.message}
+              onChange={onChange}
               placeholder="Your Message"
               rows="4"
               required
               className="w-full bg-transparent border-b border-white/20 focus:border-[#7C573C] outline-none py-3 resize-none placeholder:text-[#e6d3bd]/60"
             />
 
+            {/* feedback */}
+            {error && (
+              <p className="text-center text-sm text-red-300">{error}</p>
+            )}
+            {sent && (
+              <p className="text-center text-sm text-green-300">
+                Message sent ✓
+              </p>
+            )}
+
             <div className="text-center pt-4">
               <motion.button
                 whileHover={{ scale: 1.04 }}
                 whileTap={{ scale: 0.97 }}
                 type="submit"
-                className="px-10 py-3 rounded-full font-semibold text-white transition hover:opacity-90"
+                disabled={loading}
+                className="px-10 py-3 rounded-full font-semibold text-white transition hover:opacity-90 disabled:opacity-60"
                 style={{ backgroundColor: BRAND }}
               >
-                {sent ? "Message Sent ✓" : "Send Message"}
+                {loading ? "Sending..." : sent ? "Message Sent ✓" : "Send Message"}
               </motion.button>
             </div>
           </form>

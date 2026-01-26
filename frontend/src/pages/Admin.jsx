@@ -10,6 +10,12 @@ import {
   Tag,
   DollarSign,
   Image as ImageIcon,
+  CalendarCheck2,
+  MessageSquare,
+  Phone,
+  Mail,
+  Users,
+  Clock,
 } from "lucide-react";
 
 export default function Admin() {
@@ -24,7 +30,11 @@ export default function Admin() {
     window.location.href = "/admin-login";
   };
 
-  const [tab, setTab] = useState("products");
+  const [tab, setTab] = useState("products"); // products | add | reservations | contacts
+
+  // -----------------------
+  // Products state
+  // -----------------------
   const [products, setProducts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
@@ -78,7 +88,7 @@ export default function Admin() {
       const token = getToken();
       if (!token) throw new Error("Not logged in. Go to Admin Login first.");
 
-      //  Upload image if user selected a file
+      // Upload image if user selected a file
       let imageUrl = form.image.trim(); // allows manual URL too
 
       if (form.imageFile) {
@@ -103,10 +113,10 @@ export default function Admin() {
         const upData = await upRes.json().catch(() => ({}));
         if (!upRes.ok) throw new Error(upData.message || "Image upload failed");
 
-        imageUrl = upData.url; //  "/uploads/....png"
+        imageUrl = upData.url; // "/uploads/....png"
       }
 
-      //  Create product using imageUrl
+      // Create product using imageUrl
       const payload = {
         name: form.name.trim(),
         price: Number(form.price),
@@ -147,7 +157,7 @@ export default function Admin() {
         name: "",
         price: "",
         image: "",
-        imageFile: null, 
+        imageFile: null,
         description: "",
         weight: "500 gm",
         categories: "popular",
@@ -192,7 +202,7 @@ export default function Admin() {
     }
   };
 
-  const filtered = useMemo(() => {
+  const filteredProducts = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return products;
     return products.filter((p) => {
@@ -225,6 +235,106 @@ export default function Admin() {
     };
   }, [products]);
 
+  // -----------------------
+  // Reservations state
+  // -----------------------
+  const [reservations, setReservations] = useState([]);
+  const [resLoading, setResLoading] = useState(false);
+  const [resErr, setResErr] = useState("");
+  const [resQuery, setResQuery] = useState("");
+
+  const fetchReservations = async () => {
+    try {
+      setResLoading(true);
+      setResErr("");
+
+      const token = getToken();
+      if (!token) throw new Error("Not logged in. Go to Admin Login first.");
+
+      const res = await fetch("/api/reservations", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        setResErr("Session expired. Please login again.");
+        logoutAndGoLogin();
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || "Failed to fetch reservations");
+
+      setReservations(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setResErr(e.message || "Failed to fetch reservations");
+    } finally {
+      setResLoading(false);
+    }
+  };
+
+  const filteredReservations = useMemo(() => {
+    const q = resQuery.trim().toLowerCase();
+    if (!q) return reservations;
+    return reservations.filter((r) => {
+      const blob = `${r.name} ${r.phone} ${r.email} ${r.date} ${r.time} ${r.guests} ${r.status}`.toLowerCase();
+      return blob.includes(q);
+    });
+  }, [reservations, resQuery]);
+
+  // -----------------------
+  // Contacts state
+  // -----------------------
+  const [contacts, setContacts] = useState([]);
+  const [contactLoading, setContactLoading] = useState(false);
+  const [contactErr, setContactErr] = useState("");
+  const [contactQuery, setContactQuery] = useState("");
+
+  const fetchContacts = async () => {
+    try {
+      setContactLoading(true);
+      setContactErr("");
+
+      const token = getToken();
+      if (!token) throw new Error("Not logged in. Go to Admin Login first.");
+
+      // ✅ Admin list endpoint
+      const res = await fetch("/api/contact", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        setContactErr("Session expired. Please login again.");
+        logoutAndGoLogin();
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || data.error || "Failed to fetch contacts");
+
+      setContacts(Array.isArray(data) ? data : data.contacts || []);
+    } catch (e) {
+      setContactErr(e.message || "Failed to fetch contacts");
+    } finally {
+      setContactLoading(false);
+    }
+  };
+
+  const filteredContacts = useMemo(() => {
+    const q = contactQuery.trim().toLowerCase();
+    if (!q) return contacts;
+    return contacts.filter((c) => {
+      const blob = `${c.fullName || ""} ${c.name || ""} ${c.email || ""} ${c.phone || ""} ${c.message || ""}`.toLowerCase();
+      return blob.includes(q);
+    });
+  }, [contacts, contactQuery]);
+
+  // Load data when opening tabs
+  useEffect(() => {
+    if (tab === "reservations") fetchReservations();
+    if (tab === "contacts") fetchContacts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tab]);
+
   const pill = (text) => (
     <span className="px-2.5 py-1 rounded-full bg-white/10 border border-white/10 text-xs text-[#e6d3bd]">
       {text}
@@ -234,6 +344,21 @@ export default function Admin() {
   const inputClass =
     "w-full p-3 rounded-xl bg-black/30 border border-white/10 outline-none " +
     "focus:border-white/25 focus:bg-black/35 transition";
+
+  const subtitle =
+    tab === "products"
+      ? "Manage products"
+      : tab === "add"
+      ? "Add new product"
+      : tab === "reservations"
+      ? "Manage reservations"
+      : "Manage contact messages";
+
+  const refreshCurrent = () => {
+    if (tab === "reservations") fetchReservations();
+    else if (tab === "contacts") fetchContacts();
+    else fetchProducts();
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#1b0f0f] to-[#120a0a] text-[#f5e6d3]">
@@ -251,13 +376,13 @@ export default function Admin() {
               <h1 className="text-3xl font-semibold font-[cursive]">
                 Elza Coffee
               </h1>
-              <p className="text-sm text-[#e6d3bd]/70">Manage products</p>
+              <p className="text-sm text-[#e6d3bd]/70">{subtitle}</p>
             </div>
           </div>
 
           <div className="flex gap-3">
             <button
-              onClick={fetchProducts}
+              onClick={refreshCurrent}
               className="inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 transition"
             >
               <RefreshCcw className="w-4 h-4" />
@@ -273,9 +398,20 @@ export default function Admin() {
           </div>
         </div>
 
-        {err && (
+        {/* Errors */}
+        {err && (tab === "products" || tab === "add") && (
           <div className="mt-6 p-4 rounded-2xl bg-red-500/15 text-red-100 border border-red-500/20">
             {err}
+          </div>
+        )}
+        {resErr && tab === "reservations" && (
+          <div className="mt-6 p-4 rounded-2xl bg-red-500/15 text-red-100 border border-red-500/20">
+            {resErr}
+          </div>
+        )}
+        {contactErr && tab === "contacts" && (
+          <div className="mt-6 p-4 rounded-2xl bg-red-500/15 text-red-100 border border-red-500/20">
+            {contactErr}
           </div>
         )}
 
@@ -311,11 +447,35 @@ export default function Admin() {
                 <PlusCircle className="w-5 h-5" />
                 <span className="font-semibold">Add Product</span>
               </button>
+
+              <button
+                onClick={() => setTab("reservations")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${
+                  tab === "reservations"
+                    ? "bg-white/10 border-white/20"
+                    : "bg-transparent border-white/10 hover:bg-white/5"
+                }`}
+              >
+                <CalendarCheck2 className="w-5 h-5" />
+                <span className="font-semibold">Reservations</span>
+              </button>
+
+              <button
+                onClick={() => setTab("contacts")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${
+                  tab === "contacts"
+                    ? "bg-white/10 border-white/20"
+                    : "bg-transparent border-white/10 hover:bg-white/5"
+                }`}
+              >
+                <MessageSquare className="w-5 h-5" />
+                <span className="font-semibold">Contacts</span>
+              </button>
             </div>
 
             <div className="p-5 border-t border-white/10 space-y-3">
               <div className="flex items-center justify-between">
-                <span className="text-sm text-[#e6d3bd]/70">Total</span>
+                <span className="text-sm text-[#e6d3bd]/70">Total products</span>
                 <span className="font-bold">{stats.count}</span>
               </div>
               <div className="flex items-center justify-between">
@@ -343,16 +503,26 @@ export default function Admin() {
               <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
                   <h3 className="text-2xl font-semibold">
-                    {tab === "products" ? "Products" : "Add a new product"}
+                    {tab === "products"
+                      ? "Products"
+                      : tab === "add"
+                      ? "Add a new product"
+                      : tab === "reservations"
+                      ? "Reservations"
+                      : "Contacts"}
                   </h3>
                   <p className="text-sm text-[#e6d3bd]/70 mt-1">
                     {tab === "products"
                       ? "Search, review, and delete products."
-                      : 'Add product details. Example categories: "best,popular".'}
+                      : tab === "add"
+                      ? 'Add product details. Example categories: "best,popular".'
+                      : tab === "reservations"
+                      ? "View table reservations made by customers."
+                      : "View messages sent from your Contact page."}
                   </p>
                 </div>
 
-                {tab === "products" ? (
+                {tab === "products" && (
                   <div className="relative w-full md:w-[360px]">
                     <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#e6d3bd]/60" />
                     <input
@@ -362,7 +532,33 @@ export default function Admin() {
                       className={`pl-11 pr-4 ${inputClass}`}
                     />
                   </div>
-                ) : (
+                )}
+
+                {tab === "reservations" && (
+                  <div className="relative w-full md:w-[360px]">
+                    <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#e6d3bd]/60" />
+                    <input
+                      value={resQuery}
+                      onChange={(e) => setResQuery(e.target.value)}
+                      placeholder="Search name, phone, date..."
+                      className={`pl-11 pr-4 ${inputClass}`}
+                    />
+                  </div>
+                )}
+
+                {tab === "contacts" && (
+                  <div className="relative w-full md:w-[360px]">
+                    <Search className="w-4 h-4 absolute left-4 top-1/2 -translate-y-1/2 text-[#e6d3bd]/60" />
+                    <input
+                      value={contactQuery}
+                      onChange={(e) => setContactQuery(e.target.value)}
+                      placeholder="Search name, email, message..."
+                      className={`pl-11 pr-4 ${inputClass}`}
+                    />
+                  </div>
+                )}
+
+                {tab === "add" && (
                   <button
                     onClick={() => setTab("products")}
                     className="px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15 border border-white/10 transition"
@@ -373,16 +569,17 @@ export default function Admin() {
               </div>
             </div>
 
+            {/* PRODUCTS VIEW */}
             {tab === "products" && (
               <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
                 <div className="p-4 sm:p-6">
                   {loading ? (
                     <p className="text-[#e6d3bd]/80">Loading...</p>
-                  ) : filtered.length === 0 ? (
+                  ) : filteredProducts.length === 0 ? (
                     <p className="text-[#e6d3bd]/80">No products found.</p>
                   ) : (
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {filtered.map((p) => (
+                      {filteredProducts.map((p) => (
                         <div
                           key={p._id}
                           className="rounded-3xl bg-black/25 border border-white/10 p-5 hover:border-white/15 transition"
@@ -433,6 +630,7 @@ export default function Admin() {
               </div>
             )}
 
+            {/* ADD PRODUCT VIEW */}
             {tab === "add" && (
               <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
                 <form onSubmit={addProduct} className="p-6 space-y-5">
@@ -491,7 +689,6 @@ export default function Admin() {
                       />
                     </div>
 
-                    
                     <div className="md:col-span-2">
                       <label className="text-sm text-[#e6d3bd]/70 flex items-center gap-2 mb-2">
                         <ImageIcon className="w-4 h-4" /> Product Image
@@ -576,6 +773,164 @@ export default function Admin() {
                     Add Product
                   </button>
                 </form>
+              </div>
+            )}
+
+            {/* RESERVATIONS VIEW */}
+            {tab === "reservations" && (
+              <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+                <div className="p-4 sm:p-6">
+                  {resLoading ? (
+                    <p className="text-[#e6d3bd]/80">
+                      Loading reservations...
+                    </p>
+                  ) : filteredReservations.length === 0 ? (
+                    <p className="text-[#e6d3bd]/80">No reservations found.</p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-[900px] w-full text-sm">
+                        <thead className="bg-black/20">
+                          <tr className="text-[#e6d3bd]/80">
+                            <th className="text-left p-3 border-b border-white/10">
+                              <span className="inline-flex items-center gap-2">
+                                <Tag className="w-4 h-4" /> Name
+                              </span>
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              <span className="inline-flex items-center gap-2">
+                                <Phone className="w-4 h-4" /> Phone
+                              </span>
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              <span className="inline-flex items-center gap-2">
+                                <Mail className="w-4 h-4" /> Email
+                              </span>
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              <span className="inline-flex items-center gap-2">
+                                <CalendarCheck2 className="w-4 h-4" /> Date
+                              </span>
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              <span className="inline-flex items-center gap-2">
+                                <Clock className="w-4 h-4" /> Time
+                              </span>
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              <span className="inline-flex items-center gap-2">
+                                <Users className="w-4 h-4" /> Guests
+                              </span>
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              Status
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              Created
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredReservations.map((r) => (
+                            <tr key={r._id} className="hover:bg-white/5">
+                              <td className="p-3 border-b border-white/10">
+                                {r.name}
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {r.phone}
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {r.email}
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {r.date}
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {r.time}
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {r.guests}
+                              </td>
+                              <td className="p-3 border-b border-white/10 capitalize">
+                                {r.status || "pending"}
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {r.createdAt
+                                  ? new Date(r.createdAt).toLocaleString()
+                                  : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* CONTACTS VIEW */}
+            {tab === "contacts" && (
+              <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+                <div className="p-4 sm:p-6">
+                  {contactLoading ? (
+                    <p className="text-[#e6d3bd]/80">
+                      Loading contact messages...
+                    </p>
+                  ) : filteredContacts.length === 0 ? (
+                    <p className="text-[#e6d3bd]/80">
+                      No contact messages found.
+                    </p>
+                  ) : (
+                    <div className="overflow-x-auto">
+                      <table className="min-w-[900px] w-full text-sm">
+                        <thead className="bg-black/20">
+                          <tr className="text-[#e6d3bd]/80">
+                            <th className="text-left p-3 border-b border-white/10">
+                              Name
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              Email
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              Phone
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              Message
+                            </th>
+                            <th className="text-left p-3 border-b border-white/10">
+                              Created
+                            </th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredContacts.map((c) => (
+                            <tr key={c._id} className="hover:bg-white/5 align-top">
+                              <td className="p-3 border-b border-white/10">
+                                {c.fullName || c.name || "—"}
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {c.email || "—"}
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {c.phone || "—"}
+                              </td>
+                              <td className="p-3 border-b border-white/10 max-w-[520px]">
+                                <p className="line-clamp-4 text-[#f5e6d3]/90">
+                                  {c.message || "—"}
+                                </p>
+                              </td>
+                              <td className="p-3 border-b border-white/10">
+                                {c.createdAt
+                                  ? new Date(c.createdAt).toLocaleString()
+                                  : "—"}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
           </main>

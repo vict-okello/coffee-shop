@@ -1,9 +1,9 @@
 import React, { useMemo, useState } from "react";
 import { motion } from "framer-motion";
+import axios from "axios";
 import ReserveImg from "../assets/ReserveImg.png";
 
 function Reserve() {
-  // --- animations (same idea as yours) ---
   const imageVariant = {
     hidden: { opacity: 0, x: -100 },
     visible: { opacity: 1, x: 0, transition: { duration: 1, ease: "easeOut" } },
@@ -27,7 +27,6 @@ function Reserve() {
     }),
   };
 
-  // --- form state ---
   const [form, setForm] = useState({
     date: "",
     time: "",
@@ -78,13 +77,19 @@ function Reserve() {
     setStatus({ type: "idle", message: "" });
 
     try {
-      //   BACKEND LATER
+      const payload = {
+        date: form.date,
+        time: form.time,
+        guests: form.guests,
+        name: form.name,
+        phone: form.phone,
+        email: form.email,
+      };
 
-      await new Promise((r) => setTimeout(r, 700)); // demo delay
-
+      const res = await axios.post("/api/reservations", payload);
       setStatus({
         type: "success",
-        message: `Reservation received! We’ll contact you shortly to confirm.`,
+        message: res.data?.message || "Reserved",
       });
 
       setForm({
@@ -96,10 +101,11 @@ function Reserve() {
         email: "",
       });
     } catch (error) {
-      setStatus({
-        type: "error",
-        message: "Something went wrong. Please try again.",
-      });
+      const msg =
+        error?.response?.data?.error ||
+        error?.response?.data?.message ||
+        "Something went wrong. Please try again.";
+      setStatus({ type: "error", message: msg });
     } finally {
       setSubmitting(false);
     }
