@@ -1,18 +1,16 @@
 import mongoose from "mongoose";
 
-
 const orderItemSchema = new mongoose.Schema(
   {
-    productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" }, // links to Product
-    name: { type: String, required: true }, // product name
-    price: { type: Number, required: true }, // price per item
-    qty: { type: Number, required: true, min: 1 }, // quantity
-    image: { type: String }, // "/uploads/..."
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+    name: { type: String, required: true },
+    price: { type: Number, required: true },
+    qty: { type: Number, required: true, min: 1 },
+    image: { type: String },
   },
   { _id: false }
 );
 
-// Main Order schema
 const orderSchema = new mongoose.Schema(
   {
     customer: {
@@ -41,8 +39,27 @@ const orderSchema = new mongoose.Schema(
       enum: ["cash", "mpesa", "card"],
       default: "cash",
     },
+
+    // Payment tracking (works for M-Pesa and card too)
+    isPaid: { type: Boolean, default: false },
+    paidAt: { type: Date },
+
+    // M-Pesa STK Push details
+    mpesa: {
+      phone: { type: String, default: "" },
+      amount: { type: Number, default: 0 },
+
+      merchantRequestID: { type: String, default: "" },
+      checkoutRequestID: { type: String, default: "" },
+
+      resultCode: { type: Number },
+      resultDesc: { type: String, default: "" },
+
+      receiptNumber: { type: String, default: "" }, 
+      transactionDate: { type: String, default: "" }, 
+    },
   },
-  { timestamps: true } 
+  { timestamps: true }
 );
 
 export default mongoose.model("Order", orderSchema);

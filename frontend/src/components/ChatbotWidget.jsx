@@ -96,7 +96,7 @@ export default function ChatbotWidget() {
           whileTap={{ scale: 0.95 }}
           animate={{ y: [0, -4, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
-          className="fixed bottom-5 right-5 z-[9999] rounded-full bg-[#7C573C] text-[#EDE3D5] p-4 shadow-lg"
+          className="fixed bottom-5 right-5 z-[9999] rounded-full bg-[#d2ab90] text-[#EDE3D5] p-4 shadow-lg"
           aria-label="Open chat"
         >
           <MessageCircle className="w-6 h-6" />

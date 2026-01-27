@@ -1,6 +1,7 @@
 import mongoose from "mongoose";
 import Product from "../models/Product.js";
 import Order from "../models/Order.js";
+import MenuItem from "../models/MenuItem.js";
 
 function makeSnippet(text = "", max = 220) {
   const clean = String(text).replace(/\s+/g, " ").trim();
@@ -38,38 +39,57 @@ function toSafeOrder(order) {
   };
 }
 
-export async function siteSearch(query, limit = 6) {
-  const q = String(query || "").trim();
+async function safeTextSearch(model, q, fields, projection, limit) {
+  if (!q) return [];
 
-  // 🔍 PRODUCT SEARCH (using YOUR fields)
-  let products = [];
-  if (q) {
-    products = await Product.find(
-      { $text: { $search: q } },
-      {
-        score: { $meta: "textScore" },
-        name: 1,
-        description: 1,
-        price: 1,
-        discountPrice: 1,
-        weight: 1,
-        categories: 1,
-        rating: 1,
-        inStock: 1,
-        stockQty: 1,
-        featured: 1,
-        updatedAt: 1,
-      }
-    )
+  try {
+    const rows = await model
+      .find({ $text: { $search: q } }, { ...projection, score: { $meta: "textScore" } })
       .sort({ score: { $meta: "textScore" } })
       .limit(limit)
       .lean();
+
+    return rows;
+  } catch (err) {
+    const rx = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "i");
+    const or = fields.map((f) => ({ [f]: rx }));
+    const rows = await model.find({ $or: or }, projection).limit(limit).lean();
+    return rows;
   }
+}
+
+export async function siteSearch(query, limit = 6) {
+  const q = String(query || "").trim();
+  if (!q) return { products: [], menu: [], orders: [] };
+
+  // PRODUCT SEARCH
+  const productProjection = {
+    name: 1,
+    description: 1,
+    price: 1,
+    discountPrice: 1,
+    weight: 1,
+    categories: 1,
+    rating: 1,
+    inStock: 1,
+    stockQty: 1,
+    featured: 1,
+    updatedAt: 1,
+  };
+
+  const products = await safeTextSearch(
+    Product,
+    q,
+    ["name", "description", "categories"],
+    productProjection,
+    limit
+  );
 
   const productResults = products.map((p) => ({
+    type: "product",
     title: p.name,
-    url: `/product/${p._id}`, // since you don't use slug
-    price: p.discountPrice ?? p.price, // show discount if available
+    url: `/product/${p._id}`,
+    price: p.discountPrice ?? p.price,
     originalPrice: p.discountPrice ? p.price : null,
     inStock: typeof p.inStock === "boolean" ? p.inStock : null,
     stockQty: typeof p.stockQty === "number" ? p.stockQty : null,
@@ -79,7 +99,43 @@ export async function siteSearch(query, limit = 6) {
     updatedAt: p.updatedAt,
   }));
 
-  // 🔐 ORDER SEARCH (private, safe)
+  // MENU SEARCH
+  const menuProjection = {
+    slug: 1,
+    name: 1,
+    description: 1,
+    price: 1,
+    image: 1,
+    category: 1,
+    tag: 1,
+    rating: 1,
+    inStock: 1,
+    updatedAt: 1,
+  };
+
+  const menuItems = await safeTextSearch(
+    MenuItem,
+    q,
+    ["slug", "name", "description", "category", "tag"],
+    menuProjection,
+    limit
+  );
+
+  const menuResults = menuItems.map((m) => ({
+    type: "menu",
+    title: m.name,
+    url: `/menu`,
+    price: m.price ?? null,
+    inStock: typeof m.inStock === "boolean" ? m.inStock : null,
+    rating: m.rating ?? null,
+    category: m.category ?? null,
+    tag: m.tag ?? null,
+    image: m.image ?? null,
+    snippet: makeSnippet(m.description),
+    updatedAt: m.updatedAt,
+  }));
+
+  // ORDER SEARCH (private, safe)
   const orderId = extractOrderId(q);
   const phone = extractPhone(q);
 
@@ -101,5 +157,5 @@ export async function siteSearch(query, limit = 6) {
     }
   }
 
-  return { products: productResults, orders };
+  return { products: productResults, menu: menuResults, orders };
 }
