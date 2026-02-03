@@ -22,6 +22,7 @@ function Navbar() {
     { name: "Home", to: "/" },
     { name: "Menu", to: "/menu" },
     { name: "Product", to: "/product" },
+    { name: "Track Order", to: "/track-order" },
     { name: "Review", to: "/review" },
     { name: "Contact", to: "/contact" },
   ];

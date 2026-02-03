@@ -1,5 +1,6 @@
 import express from "express";
 import Reservation from "../models/Reservation.js";
+import { staffOrAdmin } from "../middleware/adminAuth.js";
 
 const router = express.Router();
 
@@ -35,7 +36,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-router.get("/", async (req, res) => {
+router.get("/", staffOrAdmin, async (req, res) => {
   try {
     const list = await Reservation.find().sort({ createdAt: -1 });
     return res.json(list);

@@ -4,7 +4,6 @@ import { useCart } from "../Context/CartContext";
 import { ShoppingCart, Search, Star } from "lucide-react";
 
 const BRAND = "#7C573C";
-const API = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function Menu() {
   const { addToCart } = useCart();
@@ -33,7 +32,7 @@ export default function Menu() {
         setLoading(true);
         setErr("");
 
-        const res = await fetch(`${API}/api/menu`, { signal: controller.signal });
+        const res = await fetch("/api/menu", { signal: controller.signal });
         if (!res.ok) throw new Error("Failed to load menu from backend");
 
         const data = await res.json();

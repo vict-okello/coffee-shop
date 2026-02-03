@@ -34,13 +34,13 @@ export default function Footer() {
           <h3 className="uppercase tracking-wide font-semibold mb-3 text-sm">About us</h3>
           <ul className="space-y-1 text-sm">
             <li>
-              <Link to="/locations" className="hover:underline">Find a location</Link>
+              <Link to="/contact" className="hover:underline">Find a location</Link>
             </li>
             <li>
-              <Link to="/about" className="hover:underline">About us</Link>
+              <Link to="/" className="hover:underline">About us</Link>
             </li>
             <li>
-              <Link to="/story" className="hover:underline">Our story</Link>
+              <Link to="/" className="hover:underline">Our story</Link>
             </li>
           </ul>
         </div>

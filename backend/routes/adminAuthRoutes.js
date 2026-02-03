@@ -14,22 +14,38 @@ router.post("/login", async (req, res) => {
 
     const adminEmail = process.env.ADMIN_EMAIL;
     const adminPassword = process.env.ADMIN_PASSWORD;
+    const staffEmail = process.env.STAFF_EMAIL;
+    const staffPassword = process.env.STAFF_PASSWORD;
 
     if (!adminEmail || !adminPassword)
       return res.status(500).json({ message: "Admin env not configured" });
 
-    
-    if (email.trim().toLowerCase() !== adminEmail.trim().toLowerCase()) {
+    const emailNorm = email.trim().toLowerCase();
+    const adminEmailNorm = adminEmail.trim().toLowerCase();
+    const staffEmailNorm = staffEmail ? staffEmail.trim().toLowerCase() : "";
+
+    let role = "";
+    let ok = false;
+
+    if (emailNorm === adminEmailNorm) {
+      const hashed = await bcrypt.hash(adminPassword, 10);
+      ok = await bcrypt.compare(password, hashed);
+      role = "admin";
+    } else if (staffEmailNorm && emailNorm === staffEmailNorm) {
+      if (!staffPassword) {
+        return res.status(500).json({ message: "Staff env not configured" });
+      }
+      const hashed = await bcrypt.hash(staffPassword, 10);
+      ok = await bcrypt.compare(password, hashed);
+      role = "staff";
+    } else {
       return res.status(401).json({ message: "Invalid credentials" });
     }
-
-    const hashed = await bcrypt.hash(adminPassword, 10);
-    const ok = await bcrypt.compare(password, hashed);
 
     if (!ok) return res.status(401).json({ message: "Invalid credentials" });
 
     const token = jwt.sign(
-      { role: "admin", email: adminEmail },
+      { role, email: role === "admin" ? adminEmail : staffEmail },
       process.env.JWT_SECRET,
       { expiresIn: "2h" }
     );

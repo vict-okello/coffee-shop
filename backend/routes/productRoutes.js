@@ -1,13 +1,39 @@
 import express from "express";
 import Product from "../models/Product.js";
-import { adminOnly } from "../middleware/adminAuth.js";
+import { adminOnly, staffOrAdmin } from "../middleware/adminAuth.js";
 
 const router = express.Router();
 
 // GET all products (public)
 router.get("/", async (req, res) => {
   try {
+    const products = await Product.find({
+      $or: [{ inStock: { $ne: false } }, { inStock: { $exists: false } }],
+    }).sort({ createdAt: -1 });
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET all products (admin/staff)
+router.get("/admin/all", staffOrAdmin, async (req, res) => {
+  try {
     const products = await Product.find().sort({ createdAt: -1 });
+    res.json(products);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+// GET low stock products (admin/staff)
+router.get("/low-stock", staffOrAdmin, async (req, res) => {
+  try {
+    const threshold = Math.max(0, Number(req.query.threshold) || 5);
+    const products = await Product.find({
+      inStock: { $ne: false },
+      stockQty: { $lte: threshold },
+    }).sort({ stockQty: 1, updatedAt: -1 });
     res.json(products);
   } catch (err) {
     res.status(500).json({ message: err.message });

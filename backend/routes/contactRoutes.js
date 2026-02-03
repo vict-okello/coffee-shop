@@ -1,22 +1,22 @@
 import express from "express";
 import Contact from "../models/ContactMessage.js";
-import { adminOnly } from "../middleware/adminAuth.js";
+import { staffOrAdmin } from "../middleware/adminAuth.js";
 
 const router = express.Router();
 
 router.post("/", async (req, res) => {
   try {
-    const { fullName, name, email, phone, message } = req.body;
+    const { name, email, subject, message } = req.body;
 
-    const finalName = (fullName || name || "").trim();
+    const finalName = (name || "").trim();
     if (!finalName || !email || !message) {
       return res.status(400).json({ message: "Name, email, and message are required." });
     }
 
     const created = await Contact.create({
-      fullName: finalName,
+      name: finalName,
       email: String(email).trim(),
-      phone: String(phone || "").trim(),
+      subject: String(subject || "").trim(),
       message: String(message).trim(),
     });
 
@@ -25,7 +25,7 @@ router.post("/", async (req, res) => {
     return res.status(500).json({ message: "Server error", error: err.message });
   }
 });
-router.get("/", adminOnly, async (req, res) => {
+router.get("/", staffOrAdmin, async (req, res) => {
   try {
     const list = await Contact.find().sort({ createdAt: -1 });
     return res.json(list);

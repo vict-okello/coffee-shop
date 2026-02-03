@@ -1,6 +1,6 @@
 import jwt from "jsonwebtoken";
 
-export const adminOnly = (req, res, next) => {
+export const requireRole = (roles = []) => (req, res, next) => {
   try {
     const auth = req.headers.authorization || "";
     const token = auth.startsWith("Bearer ") ? auth.slice(7) : null;
@@ -9,7 +9,7 @@ export const adminOnly = (req, res, next) => {
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-    if (decoded.role !== "admin") {
+    if (!roles.includes(decoded.role)) {
       return res.status(403).json({ message: "Forbidden" });
     }
 
@@ -19,3 +19,6 @@ export const adminOnly = (req, res, next) => {
     return res.status(401).json({ message: "Invalid token" });
   }
 };
+
+export const adminOnly = requireRole(["admin"]);
+export const staffOrAdmin = requireRole(["admin", "staff"]);

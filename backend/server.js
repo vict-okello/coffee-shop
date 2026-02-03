@@ -16,6 +16,7 @@ import reservationRoutes from "./routes/reservationRoutes.js";
 import menuRoutes from "./routes/menuRoutes.js";
 import mpesaRoutes from "./routes/mpesaRoutes.js";
 import { siteSearch } from "./utils/siteSearch.js";
+import adminExportRoutes from "./routes/adminExportRoutes.js";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -30,7 +31,7 @@ console.log("OPENAI_API_KEY loaded?", process.env.OPENAI_API_KEY ? "YES" : "NO")
 app.use(
   cors({
     origin: ["http://localhost:5173"],
-    methods: ["GET", "POST", "OPTIONS"],
+    methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   })
 );
 
@@ -46,6 +47,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/reservations", reservationRoutes);
 app.use("/api/menu", menuRoutes);
 app.use("/api/mpesa", mpesaRoutes);
+app.use("/api/admin/export", adminExportRoutes);
 
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,

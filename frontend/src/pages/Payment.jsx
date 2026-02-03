@@ -1,17 +1,10 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { useCart } from "../Context/CartContext";
-import { loadStripe } from "@stripe/stripe-js";
-import {
-  Elements,
-  PaymentElement,
-  useElements,
-  useStripe,
-} from "@stripe/react-stripe-js";
+ 
 
 const BRAND = "#7C573C";
-const API_BASE = import.meta.env.VITE_API_BASE || "http://localhost:5000";
-const stripePromise = loadStripe(import.meta.env.VITE_STRIPE_PUBLISHABLE_KEY);
-
+const API_BASE = import.meta.env.VITE_API_BASE || "";
+const apiUrl = (path) => (API_BASE ? `${API_BASE}${path}` : path);
 const money = (n) => `$${Number(n || 0).toFixed(2)}`;
 
 // Kenya numbers helper: 07.. / 7.. / +2547.. / 2547..
@@ -24,66 +17,10 @@ const normalizePhone = (raw) => {
   return s;
 };
 
-function StripeCheckout({ total, onSuccess }) {
-  const stripe = useStripe();
-  const elements = useElements();
-
-  const [submitting, setSubmitting] = useState(false);
-  const [err, setErr] = useState("");
-
-  const handleStripePay = async (e) => {
-    e.preventDefault();
-    setErr("");
-    if (!stripe || !elements) return;
-
-    setSubmitting(true);
-
-    const { error } = await stripe.confirmPayment({
-      elements,
-      confirmParams: {
-        return_url: window.location.origin + "/payment-success",
-      },
-      redirect: "if_required",
-    });
-
-    setSubmitting(false);
-
-    if (error) {
-      setErr(error.message || "Payment failed. Try again.");
-      return;
-    }
-
-    onSuccess?.();
-  };
-
-  return (
-    <form onSubmit={handleStripePay} className="mt-8 space-y-5">
-      <div className="rounded-2xl border p-5 bg-white">
-        <PaymentElement />
-      </div>
-
-      {err && (
-        <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-xl">
-          {err}
-        </div>
-      )}
-
-      <button
-        type="submit"
-        disabled={!stripe || submitting}
-        className="mt-2 w-56 h-12 rounded-xl text-white font-semibold
-                   bg-[#7C573C] hover:opacity-90 transition shadow-sm disabled:opacity-60"
-      >
-        {submitting ? "Processing..." : `Pay ${money(total)}`}
-      </button>
-    </form>
-  );
-}
-
 export default function Payment() {
   const { cart, clearCart } = useCart?.() || {}; // if you have clearCart, great. if not, ignore.
 
-  const [method, setMethod] = useState("bank"); // bank | mpesa | stripe
+  const [method, setMethod] = useState("bank"); // bank | mpesa
 
   // Bank card fields
   const [name, setName] = useState("");
@@ -108,11 +45,6 @@ export default function Payment() {
   const [mpesaMsg, setMpesaMsg] = useState("");
   const [mpesaErr, setMpesaErr] = useState("");
   const [mpesaOrderId, setMpesaOrderId] = useState("");
-
-  // Stripe
-  const [clientSecret, setClientSecret] = useState("");
-  const [stripeLoading, setStripeLoading] = useState(false);
-  const [stripeErr, setStripeErr] = useState("");
 
   const subtotal = useMemo(
     () =>
@@ -143,44 +75,6 @@ export default function Payment() {
     clearCart?.();
   };
 
-  // Create Stripe PaymentIntent when method is stripe
-  useEffect(() => {
-    const createIntent = async () => {
-      if (method !== "stripe") return;
-      if (total <= 0) return;
-
-      setStripeErr("");
-      setStripeLoading(true);
-
-      try {
-        const res = await fetch(`${API_BASE}/api/payments/stripe/create-intent`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            amount: Number(total),
-            currency: "usd",
-            metadata: {
-              itemsCount: (cart || []).length,
-              coupon: appliedCoupon || "",
-            },
-          }),
-        });
-
-        const data = await res.json();
-        if (!res.ok) throw new Error(data?.message || "Failed to init Stripe.");
-
-        setClientSecret(data.clientSecret);
-      } catch (e) {
-        setClientSecret("");
-        setStripeErr(e.message || "Stripe init error.");
-      } finally {
-        setStripeLoading(false);
-      }
-    };
-
-    createIntent();
-  }, [method, total, (cart || []).length, appliedCoupon]);
-
   // M-Pesa: create order first, then STK push using orderId
   const handleMpesaPay = async (e) => {
     e.preventDefault();
@@ -204,7 +98,7 @@ export default function Payment() {
     setMpesaLoading(true);
     try {
       // 1) Create order
-      const orderRes = await fetch(`${API_BASE}/api/orders`, {
+      const orderRes = await fetch(apiUrl("/api/orders"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,7 +132,7 @@ export default function Payment() {
       setMpesaOrderId(createdOrder._id);
 
       // 2) STK push (IMPORTANT: endpoint is /api/mpesa/stkpush)
-      const stkRes = await fetch(`${API_BASE}/api/mpesa/stkpush`, {
+      const stkRes = await fetch(apiUrl("/api/mpesa/stkpush"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -270,7 +164,7 @@ export default function Payment() {
     const checkPaid = async () => {
       tries += 1;
       try {
-        const res = await fetch(`${API_BASE}/api/orders/${mpesaOrderId}`);
+        const res = await fetch(apiUrl(`/api/orders/${mpesaOrderId}`));
         const order = await res.json();
 
         if (res.ok && order?.isPaid) {
@@ -358,17 +252,6 @@ export default function Payment() {
                 }`}
               >
                 M-Pesa
-              </button>
-              <button
-                type="button"
-                onClick={() => setMethod("stripe")}
-                className={`px-5 py-3 rounded-xl border font-semibold transition ${
-                  method === "stripe"
-                    ? "bg-[#7C573C] text-white border-transparent"
-                    : "bg-white text-gray-800 hover:bg-gray-50"
-                }`}
-              >
-                Stripe
               </button>
             </div>
 
@@ -571,47 +454,6 @@ export default function Payment() {
               </form>
             )}
 
-            {/* STRIPE */}
-            {method === "stripe" && (
-              <div className="mt-10">
-                {stripeLoading && (
-                  <div className="text-sm text-gray-600 bg-gray-50 border p-3 rounded-xl">
-                    Initializing Stripe checkout...
-                  </div>
-                )}
-
-                {stripeErr && (
-                  <div className="text-sm text-red-600 bg-red-50 border border-red-200 p-3 rounded-xl">
-                    {stripeErr}
-                  </div>
-                )}
-
-                {!stripeLoading && clientSecret && (
-                  <Elements
-                    stripe={stripePromise}
-                    options={{
-                      clientSecret,
-                      appearance: {
-                        theme: "stripe",
-                        variables: { colorPrimary: BRAND },
-                      },
-                    }}
-                  >
-                    <StripeCheckout
-                      total={total}
-                      onSuccess={() => {
-                        setSuccess(true);
-                        clearCart?.();
-                      }}
-                    />
-                  </Elements>
-                )}
-
-                <p className="text-xs text-gray-500 mt-3">
-                  Stripe is the secure way to accept real card payments.
-                </p>
-              </div>
-            )}
           </div>
 
           {/* RIGHT SUMMARY */}
@@ -664,7 +506,7 @@ export default function Payment() {
                       ? "Bank Card "
                       : method === "mpesa"
                       ? "M-Pesa"
-                      : "Stripe"}
+                      : "M-Pesa"}
                   </span>
                 </div>
               </div>

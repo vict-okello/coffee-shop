@@ -10,6 +10,8 @@ import Payment from '../pages/Payment'
 import Review from '../pages/Review'
 import Admin from '../pages/Admin'
 import AdminLogin from '../pages/AdminLogin'
+import AdminProtected from '../components/AdminProtected'
+import OrderTracking from '../pages/OrderTracking'
 
 const router = createBrowserRouter([
   {
@@ -44,9 +46,17 @@ const router = createBrowserRouter([
         path: "/review",
         element: <Review />
       },
-       {
+      {
+        path: "/track-order",
+        element: <OrderTracking />
+      },
+      {
         path: "/admin",
-        element: <Admin />
+        element: (
+          <AdminProtected>
+            <Admin />
+          </AdminProtected>
+        )
       },
       {
         path: "/admin-login",

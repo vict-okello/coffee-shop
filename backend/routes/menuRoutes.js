@@ -1,6 +1,6 @@
 import express from "express";
 import MenuItem from "../models/MenuItem.js";
-import { adminOnly } from "../middleware/adminAuth.js";
+import { adminOnly, staffOrAdmin } from "../middleware/adminAuth.js";
 
 const router = express.Router();
 
@@ -8,6 +8,20 @@ const router = express.Router();
  * GET /api/menu (Public)
  */
 router.get("/", async (req, res) => {
+  try {
+    const items = await MenuItem.find({
+      $or: [{ inStock: { $ne: false } }, { inStock: { $exists: false } }],
+    }).sort({ createdAt: -1 });
+    res.json(items);
+  } catch (err) {
+    res.status(500).json({ message: "Server error", error: err.message });
+  }
+});
+
+/**
+ * GET /api/menu/admin/all (Admin/Staff)
+ */
+router.get("/admin/all", staffOrAdmin, async (req, res) => {
   try {
     const items = await MenuItem.find().sort({ createdAt: -1 });
     res.json(items);

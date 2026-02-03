@@ -6,6 +6,8 @@ import {
   Trash2,
   RefreshCcw,
   Search,
+  AlertTriangle,
+  FileDown,
   Star,
   Tag,
   DollarSign,
@@ -25,6 +27,21 @@ export default function Admin() {
   const getToken = () =>
     localStorage.getItem("admin_token") || sessionStorage.getItem("admin_token");
 
+  const getRole = () => {
+    const token = getToken();
+    if (!token) return "";
+    try {
+      const payload = token.split(".")[1];
+      const json = JSON.parse(atob(payload.replace(/-/g, "+").replace(/_/g, "/")));
+      return json?.role || "";
+    } catch {
+      return "";
+    }
+  };
+
+  const role = getRole();
+  const isAdmin = role === "admin";
+
   const logoutAndGoLogin = () => {
     localStorage.removeItem("admin_token");
     sessionStorage.removeItem("admin_token");
@@ -39,6 +56,10 @@ export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [err, setErr] = useState("");
   const [query, setQuery] = useState("");
+  const [lowStock, setLowStock] = useState([]);
+  const [lowStockLoading, setLowStockLoading] = useState(false);
+  const [lowStockErr, setLowStockErr] = useState("");
+  const [lowStockThreshold, setLowStockThreshold] = useState(5);
 
   const [form, setForm] = useState({
     name: "",
@@ -65,7 +86,19 @@ export default function Admin() {
     try {
       setLoading(true);
       setErr("");
-      const res = await fetch("/api/products");
+      const token = getToken();
+      if (!token) throw new Error("Not logged in. Go to Admin Login first.");
+
+      const res = await fetch("/api/products/admin/all", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        setErr("Session expired. Please login again.");
+        logoutAndGoLogin();
+        return;
+      }
+
       if (!res.ok) throw new Error("Failed to fetch products");
       const data = await res.json();
       setProducts(Array.isArray(data) ? data : []);
@@ -73,6 +106,40 @@ export default function Admin() {
       setErr(e.message || "Something went wrong");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchLowStock = async () => {
+    try {
+      setLowStockLoading(true);
+      setLowStockErr("");
+
+      const token = getToken();
+      if (!token) throw new Error("Not logged in. Go to Admin Login first.");
+
+      const res = await fetch(
+        `/api/products/low-stock?threshold=${encodeURIComponent(
+          lowStockThreshold
+        )}`,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
+
+      if (res.status === 401) {
+        setLowStockErr("Session expired. Please login again.");
+        logoutAndGoLogin();
+        return;
+      }
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.message || "Failed to fetch low stock");
+
+      setLowStock(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setLowStockErr(e.message || "Failed to fetch low stock");
+    } finally {
+      setLowStockLoading(false);
     }
   };
 
@@ -109,7 +176,18 @@ export default function Admin() {
     try {
       setMenuLoading(true);
       setMenuErr("");
-      const res = await fetch("/api/menu");
+      const token = getToken();
+      if (!token) throw new Error("Not logged in. Go to Admin Login first.");
+
+      const res = await fetch("/api/menu/admin/all", {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.status === 401) {
+        setMenuErr("Session expired. Please login again.");
+        logoutAndGoLogin();
+        return;
+      }
+
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data.message || "Failed to fetch menu");
       setMenu(Array.isArray(data) ? data : []);
@@ -341,6 +419,36 @@ export default function Admin() {
     });
   }, [contacts, contactQuery]);
 
+  const downloadCsv = async (type) => {
+    try {
+      const token = getToken();
+      if (!token) throw new Error("Not logged in. Go to Admin Login first.");
+
+      const res = await fetch(`/api/admin/export/${type}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (res.status === 401) {
+        logoutAndGoLogin();
+        return;
+      }
+
+      if (!res.ok) throw new Error("Export failed");
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${type}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      setErr(e.message || "Export failed");
+    }
+  };
+
  
   // Load data
   useEffect(() => {
@@ -352,6 +460,7 @@ export default function Admin() {
     if (tab === "reservations") fetchReservations();
     if (tab === "contacts") fetchContacts();
     if (tab === "menu") fetchMenu();
+    if (tab === "inventory") fetchLowStock();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tab]);
 
@@ -530,12 +639,17 @@ export default function Admin() {
       ? "Add new menu item"
       : tab === "reservations"
       ? "Manage reservations"
+      : tab === "inventory"
+      ? "Low stock alerts"
+      : tab === "exports"
+      ? "Export data to CSV"
       : "Manage contact messages";
 
   const refreshCurrent = () => {
     if (tab === "reservations") fetchReservations();
     else if (tab === "contacts") fetchContacts();
     else if (tab === "menu") fetchMenu();
+    else if (tab === "inventory") fetchLowStock();
     else fetchProducts();
   };
 
@@ -620,17 +734,19 @@ export default function Admin() {
                 <span className="font-semibold">Products</span>
               </button>
 
-              <button
-                onClick={() => setTab("add")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${
-                  tab === "add"
-                    ? "bg-white/10 border-white/20"
-                    : "bg-transparent border-white/10 hover:bg-white/5"
-                }`}
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span className="font-semibold">Add Product</span>
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setTab("add")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${
+                    tab === "add"
+                      ? "bg-white/10 border-white/20"
+                      : "bg-transparent border-white/10 hover:bg-white/5"
+                  }`}
+                >
+                  <PlusCircle className="w-5 h-5" />
+                  <span className="font-semibold">Add Product</span>
+                </button>
+              )}
 
               {/* MENU (NEW) */}
               <button
@@ -645,17 +761,19 @@ export default function Admin() {
                 <span className="font-semibold">Menu</span>
               </button>
 
-              <button
-                onClick={() => setTab("addMenu")}
-                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${
-                  tab === "addMenu"
-                    ? "bg-white/10 border-white/20"
-                    : "bg-transparent border-white/10 hover:bg-white/5"
-                }`}
-              >
-                <PlusCircle className="w-5 h-5" />
-                <span className="font-semibold">Add Menu</span>
-              </button>
+              {isAdmin && (
+                <button
+                  onClick={() => setTab("addMenu")}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${
+                    tab === "addMenu"
+                      ? "bg-white/10 border-white/20"
+                      : "bg-transparent border-white/10 hover:bg-white/5"
+                  }`}
+                >
+                  <PlusCircle className="w-5 h-5" />
+                  <span className="font-semibold">Add Menu</span>
+                </button>
+              )}
 
               <button
                 onClick={() => setTab("reservations")}
@@ -679,6 +797,30 @@ export default function Admin() {
               >
                 <MessageSquare className="w-5 h-5" />
                 <span className="font-semibold">Contacts</span>
+              </button>
+
+              <button
+                onClick={() => setTab("inventory")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${
+                  tab === "inventory"
+                    ? "bg-white/10 border-white/20"
+                    : "bg-transparent border-white/10 hover:bg-white/5"
+                }`}
+              >
+                <AlertTriangle className="w-5 h-5" />
+                <span className="font-semibold">Inventory</span>
+              </button>
+
+              <button
+                onClick={() => setTab("exports")}
+                className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition ${
+                  tab === "exports"
+                    ? "bg-white/10 border-white/20"
+                    : "bg-transparent border-white/10 hover:bg-white/5"
+                }`}
+              >
+                <FileDown className="w-5 h-5" />
+                <span className="font-semibold">Exports</span>
               </button>
             </div>
 
@@ -722,6 +864,10 @@ export default function Admin() {
                       ? "Add a new menu item"
                       : tab === "reservations"
                       ? "Reservations"
+                      : tab === "inventory"
+                      ? "Inventory Alerts"
+                      : tab === "exports"
+                      ? "Exports"
                       : "Contacts"}
                   </h3>
                   <p className="text-sm text-[#e6d3bd]/70 mt-1">
@@ -735,6 +881,10 @@ export default function Admin() {
                       ? "Add menu items shown on Menu."
                       : tab === "reservations"
                       ? "View table reservations made by customers."
+                      : tab === "inventory"
+                      ? "See low stock items and restock quickly."
+                      : tab === "exports"
+                      ? "Download orders, reservations, and contacts."
                       : "View messages sent from your Contact page."}
                   </p>
                 </div>
@@ -838,13 +988,15 @@ export default function Admin() {
                               </div>
                             </div>
 
-                            <button
-                              onClick={() => deleteProduct(p._id, p.name)}
-                              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-500/15 text-red-100 border border-red-500/20 hover:bg-red-500/25 transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => deleteProduct(p._id, p.name)}
+                                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-500/15 text-red-100 border border-red-500/20 hover:bg-red-500/25 transition"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            )}
                           </div>
 
                           {p.description ? (
@@ -914,13 +1066,15 @@ export default function Admin() {
                               </div>
                             </div>
 
-                            <button
-                              onClick={() => deleteMenuItem(m._id, m.name)}
-                              className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-500/15 text-red-100 border border-red-500/20 hover:bg-red-500/25 transition"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              Delete
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => deleteMenuItem(m._id, m.name)}
+                                className="shrink-0 inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-red-500/15 text-red-100 border border-red-500/20 hover:bg-red-500/25 transition"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                Delete
+                              </button>
+                            )}
                           </div>
 
                           {m.description ? (
@@ -940,8 +1094,112 @@ export default function Admin() {
               </div>
             )}
 
+            {/* INVENTORY ALERTS */}
+            {tab === "inventory" && (
+              <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+                <div className="p-4 sm:p-6 space-y-4">
+                  <div className="flex flex-col md:flex-row md:items-center gap-3">
+                    <div className="text-sm text-[#e6d3bd]/70">
+                      Low stock threshold
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        value={lowStockThreshold}
+                        onChange={(e) =>
+                          setLowStockThreshold(Number(e.target.value || 0))
+                        }
+                        className={`w-24 ${inputClass}`}
+                      />
+                      <button
+                        onClick={fetchLowStock}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/10 border border-white/10 hover:bg-white/15 transition"
+                      >
+                        Refresh
+                      </button>
+                    </div>
+                  </div>
+
+                  {lowStockErr && (
+                    <div className="p-3 rounded-2xl bg-red-500/15 text-red-100 border border-red-500/20">
+                      {lowStockErr}
+                    </div>
+                  )}
+
+                  {lowStockLoading ? (
+                    <p className="text-[#e6d3bd]/80">Loading low stock...</p>
+                  ) : lowStock.length === 0 ? (
+                    <p className="text-[#e6d3bd]/80">
+                      No low stock items found.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {lowStock.map((p) => (
+                        <div
+                          key={p._id}
+                          className="rounded-3xl bg-black/25 border border-white/10 p-5"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-lg font-semibold truncate">
+                                {p.name}
+                              </p>
+                              <div className="mt-2 flex flex-wrap gap-2">
+                                {pill(`$${p.price}`)}
+                                {pill(`stock: ${p.stockQty ?? "?"}`)}
+                                {pill(p.inStock ? "in stock" : "out of stock")}
+                              </div>
+                            </div>
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-yellow-500/15 text-yellow-100 border border-yellow-500/20 text-xs">
+                              <AlertTriangle className="w-3.5 h-3.5" />
+                              Low
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* EXPORTS */}
+            {tab === "exports" && (
+              <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+                <div className="p-6 space-y-4">
+                  <p className="text-sm text-[#e6d3bd]/70">
+                    Download CSV files for reporting and backups.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                      onClick={() => downloadCsv("orders")}
+                      className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/10 border border-white/10 hover:bg-white/15 transition"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      Export Orders
+                    </button>
+                    <button
+                      onClick={() => downloadCsv("reservations")}
+                      className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/10 border border-white/10 hover:bg-white/15 transition"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      Export Reservations
+                    </button>
+                    <button
+                      onClick={() => downloadCsv("contacts")}
+                      className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-white/10 border border-white/10 hover:bg-white/15 transition"
+                    >
+                      <FileDown className="w-4 h-4" />
+                      Export Contacts
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* ADD PRODUCT VIEW */}
-            {tab === "add" && (
+            {isAdmin && tab === "add" && (
               <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
                 <form onSubmit={addProduct} className="p-6 space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -1087,7 +1345,7 @@ export default function Admin() {
             )}
 
             {/* ADD MENU VIEW (NEW) */}
-            {tab === "addMenu" && (
+            {isAdmin && tab === "addMenu" && (
               <div className="rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
                 <form onSubmit={addMenuItem} className="p-6 space-y-5">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
